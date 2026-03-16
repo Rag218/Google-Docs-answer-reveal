@@ -8,18 +8,15 @@
 // @grant        GM_xmlhttpRequest
 // @grant        GM_addStyle
 // ==/UserScript==
-
 (function() {
     'use strict';
-
-    // Adiciona estilos CSS
     GM_addStyle(`
         .answer-finder-container {
             position: fixed;
             top: 20px;
             right: 20px;
             width: 300px;
-            background: white;
+            background white;
             border: 2px solid #1a73e8;
             border-radius: 8px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.15);
@@ -30,7 +27,6 @@
             min-width: 250px;
             min-height: 150px;
         }
-
         .answer-finder-header {
             background: #1a73e8;
             color: white;
@@ -42,29 +38,24 @@
             font-weight: bold;
             user-select: none;
         }
-
         .answer-finder-close {
             cursor: pointer;
             font-size: 18px;
             padding: 0 5px;
         }
-
         .answer-finder-close:hover {
             opacity: 0.8;
         }
-
         .answer-finder-content {
             padding: 15px;
             max-height: 400px;
             overflow-y: auto;
         }
-
         .answer-finder-input-group {
             display: flex;
             gap: 8px;
             margin-bottom: 15px;
         }
-
         .answer-finder-input {
             flex: 1;
             padding: 8px;
@@ -72,7 +63,6 @@
             border-radius: 4px;
             font-size: 14px;
         }
-
         .answer-finder-button {
             padding: 8px 15px;
             background: #1a73e8;
@@ -82,20 +72,16 @@
             cursor: pointer;
             font-size: 14px;
         }
-
         .answer-finder-button:hover {
             background: #1557b0;
         }
-
         .answer-finder-button:disabled {
             background: #ccc;
             cursor: not-allowed;
         }
-
         .answer-finder-results {
             margin-top: 15px;
         }
-
         .answer-item {
             background: #f8f9fa;
             border-left: 3px solid #1a73e8;
@@ -103,32 +89,27 @@
             margin-bottom: 10px;
             border-radius: 0 4px 4px 0;
         }
-
         .answer-item-question {
             font-weight: bold;
             margin-bottom: 5px;
             color: #333;
             font-size: 13px;
         }
-
         .answer-item-answer {
             color: #1a73e8;
             margin-bottom: 3px;
             font-size: 14px;
         }
-
         .answer-item-context {
             font-size: 11px;
             color: #666;
             font-style: italic;
         }
-
         .answer-finder-loading {
             text-align: center;
             padding: 20px;
             color: #666;
         }
-
         .answer-finder-error {
             color: #d32f2f;
             padding: 10px;
@@ -138,55 +119,39 @@
             font-size: 13px;
         }
     `);
-
-    // Função para extrair respostas do HTML
     function extractAnswers(html) {
         const parser = new DOMParser();
         const doc = parser.parseFromString(html, 'text/html');
         const answers = [];
-
-        // Padrões comuns para encontrar questões e respostas
         const patterns = [
-            // Padrão: pergunta em h3/h4, resposta em p/div seguinte
             {
                 question: /h[3-6]|strong|b|.question|.pergunta/i,
                 answer: /p|div|.answer|.resposta/i,
                 context: 'Próximo elemento'
             },
-            // Padrão: alternativas (A, B, C, D)
             {
                 pattern: /([A-D]\)|\([A-D]\)|\d+\.)\s*([^<>]+)/g,
                 context: 'Alternativa'
             },
-            // Padrão: gabarito/respostas
             {
                 pattern: /(gabarito|resposta|answer)[:\s]+([A-D, ]+)/gi,
                 context: 'Gabarito'
             },
-            // Padrão: questão numerada
             {
                 pattern: /(questão|questao|question)\s*(\d+)[:\s]*([^<>]+)/gi,
                 context: 'Questão numerada'
             }
         ];
-
-        // Tenta encontrar respostas usando padrões
         const text = doc.body.textContent || '';
-        
-        // Procura por questões em elementos específicos
         const elements = doc.body.getElementsByTagName('*');
         let currentQuestion = null;
-        
         for (let i = 0; i < elements.length; i++) {
             const el = elements[i];
             const text = el.textContent.trim();
-            
             if (text && text.length > 10 && text.length < 200) {
-                // Verifica se parece uma pergunta
                 if (text.includes('?') || text.match(/^(qual|como|quando|onde|por que|explique|defina)/i)) {
                     currentQuestion = text;
                 }
-                // Verifica se parece uma resposta (próximo elemento após pergunta)
                 else if (currentQuestion && text.length > 5 && !text.includes('?')) {
                     answers.push({
                         question: currentQuestion,
@@ -197,8 +162,6 @@
                 }
             }
         }
-
-        // Procura por padrões no texto
         patterns.forEach(pattern => {
             if (pattern.pattern) {
                 const matches = text.matchAll(pattern.pattern);
@@ -211,12 +174,8 @@
                 }
             }
         });
-
-        // Se encontrou muitas respostas, limita e retorna as mais relevantes
         return answers.slice(0, 10);
     }
-
-    // Função para buscar conteúdo da URL
     function fetchUrlContent(url, callback) {
         GM_xmlhttpRequest({
             method: 'GET',
@@ -233,12 +192,9 @@
             }
         });
     }
-
-    // Função para criar a interface
     function createFloatingBox() {
         const container = document.createElement('div');
         container.className = 'answer-finder-container';
-        
         container.innerHTML = `
             <div class="answer-finder-header">
                 <span>🔍 Buscador de Respostas</span>
@@ -252,22 +208,15 @@
                 <div class="answer-finder-results"></div>
             </div>
         `;
-
         document.body.appendChild(container);
-
-        // Torna arrastável
         makeDraggable(container);
-
-        // Event listeners
         const closeBtn = container.querySelector('.answer-finder-close');
         const input = container.querySelector('.answer-finder-input');
         const button = container.querySelector('.answer-finder-button');
         const results = container.querySelector('.answer-finder-results');
-
         closeBtn.addEventListener('click', () => {
             container.remove();
         });
-
         button.addEventListener('click', () => {
             const url = input.value.trim();
             if (url) {
@@ -276,37 +225,27 @@
                 results.innerHTML = '<div class="answer-finder-error">Por favor, insira uma URL</div>';
             }
         });
-
         input.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
                 button.click();
             }
         });
-
         return container;
     }
-
-    // Função para buscar respostas
     function searchAnswers(url, resultsElement, buttonElement) {
         resultsElement.innerHTML = '<div class="answer-finder-loading">🔍 Buscando respostas...</div>';
         buttonElement.disabled = true;
-
         fetchUrlContent(url, (error, html) => {
             buttonElement.disabled = false;
-            
             if (error) {
                 resultsElement.innerHTML = `<div class="answer-finder-error">${error}</div>`;
                 return;
             }
-
             const answers = extractAnswers(html);
-            
             if (answers.length === 0) {
                 resultsElement.innerHTML = '<div class="answer-finder-error">Nenhuma resposta encontrada na página</div>';
                 return;
             }
-
-            // Exibe as respostas
             let html_results = '';
             answers.forEach((answer, index) => {
                 html_results += `
@@ -317,17 +256,12 @@
                     </div>
                 `;
             });
-
             resultsElement.innerHTML = html_results;
-            
-            // Ajusta altura da caixa baseado no número de resultados
             const container = resultsElement.closest('.answer-finder-container');
             const newHeight = Math.min(500, 200 + answers.length * 70);
             container.style.height = newHeight + 'px';
         });
     }
-
-    // Função para tornar o elemento arrastável
     function makeDraggable(element) {
         const header = element.querySelector('.answer-finder-header');
         let isDragging = false;
@@ -337,43 +271,33 @@
         let initialY;
         let xOffset = 0;
         let yOffset = 0;
-
         header.addEventListener('mousedown', dragStart);
         document.addEventListener('mousemove', drag);
         document.addEventListener('mouseup', dragEnd);
-
         function dragStart(e) {
             initialX = e.clientX - xOffset;
             initialY = e.clientY - yOffset;
-
             if (e.target === header || header.contains(e.target)) {
                 isDragging = true;
             }
         }
-
         function drag(e) {
             if (isDragging) {
                 e.preventDefault();
                 currentX = e.clientX - initialX;
                 currentY = e.clientY - initialY;
-
                 xOffset = currentX;
                 yOffset = currentY;
-
                 setTranslate(currentX, currentY, element);
             }
         }
-
         function setTranslate(xPos, yPos, el) {
             el.style.transform = `translate(${xPos}px, ${yPos}px)`;
         }
-
         function dragEnd() {
             isDragging = false;
         }
     }
-
-    // Inicializa o script quando a página estiver carregada
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', () => {
             createFloatingBox();
@@ -381,5 +305,4 @@
     } else {
         createFloatingBox();
     }
-
 })();
